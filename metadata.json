@@ -1,0 +1,6 @@
+{
+  "name": "OnlyCreation",
+  "description": "AI-powered creative studio, on-demand Uber-style video creator dispatch, and studio marketplace with nostalgic video reels.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

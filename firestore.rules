@@ -1,0 +1,167 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function emailVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isAdmin() { 
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) || 
+        request.auth.token.email == 'onlycreation07@gmail.com'
+      ); 
+    }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // --- Validation Helpers ---
+    function isValidBrand(data) {
+      return data.keys().hasAll(['userId', 'name'])
+        && data.userId == request.auth.uid
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && (!('industry' in data) || (data.industry is string && data.industry.size() <= 100))
+        && (!('tone' in data) || (data.tone is string && data.tone.size() <= 100))
+        && (!('fontVibe' in data) || data.fontVibe in ['modern', 'serif', 'brutalist', 'minimal'])
+        && (!('likedStudioIds' in data) || data.likedStudioIds is list);
+    }
+
+    function isValidBooking(data) {
+      return data.keys().hasAll(['studioId', 'date', 'hours', 'totalPrice', 'status'])
+        && data.studioId is string
+        && data.date is string
+        && data.hours is number && data.hours > 0
+        && data.totalPrice is number && data.totalPrice >= 0
+        && data.status in ['pending', 'confirmed', 'completed']
+        && (!('userId' in data) || data.userId == request.auth.uid);
+    }
+
+    function isValidDispatch(data) {
+      return data.keys().hasAll(['userId', 'creatorTier', 'shootLocation', 'totalPrice', 'status'])
+        && data.userId == request.auth.uid
+        && data.creatorTier in ['instagrammer', 'dslr_pro', 'agency_crew', 'rental_express']
+        && data.shootLocation is string && data.shootLocation.size() <= 500
+        && data.totalPrice is number && data.totalPrice >= 0
+        && data.status in ['matching', 'en_route', 'arrived', 'shooting', 'completed']
+        && (!('creatorName' in data) || data.creatorName is string)
+        && (!('creatorPhoto' in data) || data.creatorPhoto is string)
+        && (!('pickupLocation' in data) || data.pickupLocation is string)
+        && (!('durationHours' in data) || data.durationHours is number)
+        && (!('deliveredReelUrl' in data) || data.deliveredReelUrl is string)
+        && (!('rating' in data) || data.rating is number)
+        && (!('createdAt' in data) || data.createdAt is string);
+    }
+
+    function isValidCreative(data) {
+      return data.keys().hasAll(['userId', 'prompt', 'copy'])
+        && data.userId == request.auth.uid
+        && data.prompt is string && data.prompt.size() <= 1000
+        && data.copy is string && data.copy.size() <= 5000
+        && (!('status' in data) || data.status in ['draft', 'approved', 'produced'])
+        && (!('createdAt' in data) || data.createdAt is string)
+        && (!('imageUrls' in data) || data.imageUrls is list)
+        && (!('videoScript' in data) || data.videoScript is string)
+        && (!('productionBrief' in data) || data.productionBrief is string);
+    }
+
+    function isValidStudio(data) {
+      return data.keys().hasAll(['name', 'pricePerHour', 'category'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.pricePerHour is number && data.pricePerHour >= 0
+        && data.category in ['photography', 'video', 'music', 'podcast', 'mixed', 'billboard']
+        && (!('description' in data) || (data.description is string && data.description.size() <= 5000))
+        && (!('location' in data) || (data.location is string && data.location.size() <= 1000))
+        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 10000000))
+        && (!('equipment' in data) || data.equipment is list)
+        && (!('amenities' in data) || data.amenities is list)
+        && (!('genres' in data) || data.genres is list)
+        && (!('rating' in data) || (data.rating is number && data.rating >= 0 && data.rating <= 5))
+        && (!('isPremium' in data) || data.isPremium is bool)
+        && (!('previousWorks' in data) || data.previousWorks is list)
+        && (!('socialLinks' in data) || data.socialLinks is map)
+        && (!('availability' in data) || data.availability is string);
+    }
+
+    function isValidConfig(data) {
+      return data.subscriptionPrice is number && data.subscriptionPrice >= 0;
+    }
+
+    // --- Match Blocks ---
+
+    // Admin List (Only Super Admin or established admins can read/write)
+    match /admins/{userId} {
+      // Identity check: Bootstrapping is usually handled via Firebase Console.
+      // Rules protect subsequent changes.
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /dispatches/{dispatchId} {
+      allow create: if isSignedIn() && isValidDispatch(incoming());
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow update: if (isOwner(existing().userId) || isAdmin()) && isValidDispatch(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /bookings/{bookingId} {
+      allow create: if isSignedIn() && isValidBooking(incoming());
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    match /brands/{brandId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(brandId) && isValidBrand(incoming());
+      allow update: if isOwner(existing().userId) && isValidBrand(incoming())
+        && incoming().userId == existing().userId;
+      allow delete: if isOwner(existing().userId);
+    }
+
+    match /creatives/{creativeId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(creativeId) && isValidCreative(incoming());
+      allow update: if isOwner(existing().userId) && isValidCreative(incoming())
+        && incoming().userId == existing().userId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['copy', 'status', 'approvedAt']);
+      allow delete: if isOwner(existing().userId);
+    }
+
+    match /studios/{studioId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(studioId) && isValidStudio(incoming());
+      allow update: if isAdmin() && isValidStudio(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /config/main {
+      allow read: if true;
+      allow write: if isAdmin() && isValidConfig(incoming());
+    }
+    // --- Enquiries ---
+    match /enquiries/{enquiryId} {
+      allow create: if isSignedIn() && isValidEnquiry(incoming());
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if isOwner(resource.data.userId) || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    function isValidEnquiry(data) {
+      return data.userId == request.auth.uid
+        && data.prompt is string && data.prompt.size() <= 3000
+        && data.billboardType in ['led', 'banner', 'scrolling', 'any']
+        && data.budget is string
+        && (!('status' in data) || data.status in ['pending', 'reviewed', 'contacted'])
+        && (!('createdAt' in data) || data.createdAt is string)
+        && (!('userEmail' in data) || data.userEmail is string);
+    }
+  }
+}
