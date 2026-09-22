@@ -132,9 +132,72 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "prompt", "billboardType", "budget"]
+    },
+    "Project": {
+      "title": "Production Project",
+      "description": "Full lifecycle creative production project",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "brandName": { "type": "string" },
+        "stage": { "type": "string", "enum": ["ideation", "pre_production", "production", "review", "delivered"] },
+        "budget": { "type": "number" },
+        "creativePrompt": { "type": "string" },
+        "assignedCreator": { "type": "object" },
+        "milestones": { "type": "array" },
+        "deliverables": { "type": "array" },
+        "aiHealthScore": { "type": "number" },
+        "aiRiskAnalysis": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "title", "stage"]
+    },
+    "ProjectMessage": {
+      "title": "Anonymous Project Message",
+      "description": "Internal project communications without phone numbers",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderRole": { "type": "string", "enum": ["client", "creator", "producer", "admin"] },
+        "content": { "type": "string" },
+        "attachmentUrl": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["projectId", "senderId", "senderName", "content"]
+    },
+    "ActivityLog": {
+      "title": "Platform Activity Log",
+      "description": "System and user action audit trail",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string" },
+        "entityType": { "type": "string" },
+        "entityId": { "type": "string" },
+        "performedBy": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["action", "entityType", "entityId", "performedBy"]
     }
   },
   "firestore": {
+    "projects/{projectId}": {
+      "schema": "Project",
+      "description": "Production project records"
+    },
+    "messages/{messageId}": {
+      "schema": "ProjectMessage",
+      "description": "Anonymous internal project chat"
+    },
+    "activityLogs/{logId}": {
+      "schema": "ActivityLog",
+      "description": "System and platform audit logs"
+    },
     "dispatches/{dispatchId}": {
       "schema": "DispatchBooking",
       "description": "Uber-style creator shoot dispatches"

@@ -118,7 +118,7 @@ function AppContent() {
           />
         );
       case 'projects':
-        return <ProjectsScreen creatives={creatives} />;
+        return <ProjectsScreen creatives={creatives} onOpenCreate={() => setCurrentView('create')} />;
       case 'profile':
         return (
           <ProfileScreen 

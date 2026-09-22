@@ -1,19 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, X, DollarSign, Layout, ShieldCheck, RefreshCw, Database, Phone, MessageSquare, Briefcase, BarChart3, MapPin, Layers, CheckCircle, Clock, Building2 } from 'lucide-react';
+import { 
+  Plus, 
+  Trash2, 
+  Edit2, 
+  Save, 
+  X, 
+  DollarSign, 
+  Layout, 
+  ShieldCheck, 
+  RefreshCw, 
+  Database, 
+  Phone, 
+  MessageSquare, 
+  Briefcase, 
+  BarChart3, 
+  MapPin, 
+  Layers, 
+  CheckCircle, 
+  Clock, 
+  Building2, 
+  Zap, 
+  Activity, 
+  FolderCheck, 
+  Globe, 
+  Sliders 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { dbService } from '../../services/dbService';
-import { Studio, BillboardEnquiry, Booking } from '../../types';
+import { Studio, BillboardEnquiry, Booking, Project, DispatchBooking, ActivityLog, ProjectStage } from '../../types';
 import { MOCK_STUDIOS } from '../../constants/mockData';
 
-type AdminTab = 'overview' | 'studios' | 'bookings' | 'enquiries';
+type AdminTab = 'overview' | 'studios' | 'projects' | 'dispatches' | 'bookings' | 'enquiries' | 'activityLogs';
 
 export default function AdminDashboard() {
   const [studios, setStudios] = useState<Studio[]>([]);
   const [enquiries, setEnquiries] = useState<BillboardEnquiry[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [dispatches, setDispatches] = useState<DispatchBooking[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [subPrice, setSubPrice] = useState(499);
+  const [commissionRate, setCommissionRate] = useState(10);
+  const [panIndiaMode, setPanIndiaMode] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingStudio, setEditingStudio] = useState<Partial<Studio> | null>(null);
@@ -35,16 +65,24 @@ export default function AdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [studiosData, enquiriesData, bookingsData, config] = await Promise.all([
+      const [studiosData, enquiriesData, bookingsData, config, projectsData, dispatchesData, logsData] = await Promise.all([
         dbService.getStudios(),
         dbService.getBillboardEnquiries(),
         dbService.getBookings(),
-        dbService.getAppConfig()
+        dbService.getAppConfig(),
+        dbService.getProjects(),
+        dbService.getDispatches(),
+        dbService.getActivityLogs(40)
       ]);
       setStudios(studiosData);
       setEnquiries(enquiriesData);
       setBookings(bookingsData);
+      setProjects(projectsData);
+      setDispatches(dispatchesData);
+      setActivityLogs(logsData);
       setSubPrice(config.subscriptionPrice);
+      setCommissionRate(config.commissionRate ?? 10);
+      setPanIndiaMode(config.panIndiaMode ?? true);
     } catch (error) {
       console.error(error);
     } finally {
@@ -131,10 +169,41 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleUpdateProjectStage = async (id: string, stage: ProjectStage) => {
+    try {
+      await dbService.updateProject(id, { stage });
+      loadData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAdvanceDispatch = async (id: string, nextStatus: DispatchBooking['status']) => {
+    try {
+      await dbService.updateDispatch(id, { status: nextStatus });
+      loadData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSavePlatformSettings = async () => {
+    try {
+      await dbService.updateAppConfig({
+        subscriptionPrice: subPrice,
+        commissionRate,
+        panIndiaMode
+      });
+      alert('Platform configuration saved!');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const stats = [
-    { label: 'Marketplace Value', value: `$${studios.length * 1500}+`, icon: BarChart3, color: 'text-blue-400' },
-    { label: 'Active Studios', value: studios.length, icon: Building2, color: 'text-sleek-violet' },
-    { label: 'Strategy Leads', value: enquiries.length, icon: MessageSquare, color: 'text-sleek-fuchsia' },
+    { label: 'Active Projects', value: projects.length, icon: FolderCheck, color: 'text-purple-400' },
+    { label: 'Live Dispatches', value: dispatches.filter(d => d.status !== 'completed').length, icon: Zap, color: 'text-emerald-400' },
+    { label: 'Studio Partners', value: studios.length, icon: Building2, color: 'text-sleek-violet' },
     { label: 'Confirmed Bookings', value: bookings.filter(b => b.status === 'confirmed').length, icon: CheckCircle, color: 'text-green-400' },
   ];
 
@@ -164,15 +233,18 @@ export default function AdminDashboard() {
       {/* Navigation Tabs */}
       <div className="flex gap-2 overflow-x-auto hide-scrollbar p-1 bg-white/5 rounded-2xl border border-white/5">
         {[
-          { id: 'overview', label: 'Overall View', icon: BarChart3 },
-          { id: 'studios', label: 'Studios & Billboards', icon: Layers },
-          { id: 'bookings', label: 'Bookings', icon: Clock },
-          { id: 'enquiries', label: 'OMAS Enquiries', icon: MessageSquare },
+          { id: 'overview', label: 'Overview', icon: BarChart3 },
+          { id: 'projects', label: `Projects (${projects.length})`, icon: FolderCheck },
+          { id: 'dispatches', label: `Dispatches (${dispatches.length})`, icon: Zap },
+          { id: 'studios', label: `Studios (${studios.length})`, icon: Layers },
+          { id: 'bookings', label: `Bookings (${bookings.length})`, icon: Clock },
+          { id: 'enquiries', label: `Enquiries (${enquiries.length})`, icon: MessageSquare },
+          { id: 'activityLogs', label: `Audit Trail (${activityLogs.length})`, icon: Activity },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as AdminTab)}
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all shrink-0 border ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all shrink-0 border ${
               activeTab === tab.id 
                 ? 'bg-sleek-violet text-white border-sleek-violet shadow-lg shadow-sleek-violet/20' 
                 : 'text-white/40 border-transparent hover:text-white hover:bg-white/5 hover:border-white/10'
@@ -250,11 +322,58 @@ export default function AdminDashboard() {
                   />
                 </div>
               </div>
+
+              {/* Commission Rate Control */}
+              <div className="flex items-center justify-between bg-white/5 p-6 rounded-3xl border border-white/5">
+                <div className="flex items-center gap-4">
+                  <div className="p-4 bg-emerald-500/20 rounded-2xl">
+                    <Sliders className="text-emerald-400" size={24} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-white/90">Platform Take Rate (Commission)</span>
+                    <span className="text-[8px] font-bold text-white/30 uppercase tracking-[0.2em]">Deducted from creator payouts</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="number" 
+                    value={commissionRate}
+                    onChange={(e) => setCommissionRate(Number(e.target.value))}
+                    className="bg-transparent w-16 text-right font-black text-3xl text-emerald-400 outline-none"
+                  />
+                  <span className="text-white/40 font-bold text-xl">%</span>
+                </div>
+              </div>
+
+              {/* Pan-India Discovery Toggle */}
+              <div className="flex items-center justify-between bg-white/5 p-6 rounded-3xl border border-white/5">
+                <div className="flex items-center gap-4">
+                  <div className="p-4 bg-blue-500/20 rounded-2xl">
+                    <Globe className="text-blue-400" size={24} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-white/90">Pan-India Network Mode</span>
+                    <span className="text-[8px] font-bold text-white/30 uppercase tracking-[0.2em]">
+                      {panIndiaMode ? 'Active across Bengaluru, Mumbai, Delhi, Hyderabad' : 'Bangalore Exclusive Only'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPanIndiaMode(!panIndiaMode)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                    panIndiaMode ? 'bg-blue-500 text-white shadow-lg' : 'bg-white/10 text-white/40'
+                  }`}
+                >
+                  {panIndiaMode ? 'Enabled' : 'Disabled'}
+                </button>
+              </div>
+
               <button 
-                onClick={() => dbService.updateAppConfig({ subscriptionPrice: subPrice }).then(() => alert('Price Updated'))}
+                onClick={handleSavePlatformSettings}
                 className="w-full bg-sleek-violet text-white py-5 rounded-[24px] font-bold text-[10px] uppercase tracking-widest hover:bg-sleek-violet/80 transition-all shadow-xl shadow-sleek-violet/20"
               >
-                Apply Global Pricing Strategy
+                Apply Global Platform & Monetization Strategy
               </button>
             </section>
 
@@ -573,6 +692,234 @@ export default function AdminDashboard() {
                         Dismiss
                       </button>
                     </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Projects Tab */}
+        {activeTab === 'projects' && (
+          <motion.div
+            key="projects"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex flex-col gap-4"
+          >
+            <div className="flex justify-between items-center px-1">
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                All Platform Pipelines ({projects.length})
+              </label>
+              <span className="text-[10px] text-sleek-violet font-mono font-bold">
+                Escrow Lifecycle Management
+              </span>
+            </div>
+
+            {projects.length === 0 ? (
+              <div className="bg-sleek-dark p-12 rounded-[40px] border border-white/5 flex flex-col items-center justify-center text-center gap-3">
+                <FolderCheck size={48} className="text-white/10" />
+                <p className="text-xs text-white/40">No projects registered yet.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {projects.map((proj) => (
+                  <div key={proj.id} className="bg-sleek-dark p-6 rounded-[32px] border border-white/5 flex flex-col gap-4 shadow-xl">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-white/40">
+                            {proj.brandName}
+                          </span>
+                          <span className="text-white/20">•</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">
+                            ₹{proj.budget?.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <h4 className="text-base font-bold text-white">{proj.title}</h4>
+                        <p className="text-xs text-white/60 mt-1">{proj.assignedCreator?.role || 'Creator Assigned'}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {proj.aiHealthScore && (
+                          <div className="px-2.5 py-1 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[10px] font-bold">
+                            AI Health {proj.aiHealthScore}%
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Stage Controls */}
+                    <div className="p-3 bg-white/5 rounded-2xl flex flex-col gap-2">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-white/40">
+                        Admin Stage Override:
+                      </span>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {(['ideation', 'pre_production', 'production', 'review', 'delivered'] as ProjectStage[]).map((st) => (
+                          <button
+                            key={st}
+                            onClick={() => handleUpdateProjectStage(proj.id, st)}
+                            className={`py-1.5 px-1 rounded-xl text-[8px] font-black uppercase tracking-tight transition-all text-center ${
+                              proj.stage === st
+                                ? 'bg-sleek-violet text-white shadow-md'
+                                : 'bg-white/5 text-white/30 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            {st.replace('_', ' ')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center text-[10px] text-white/40 pt-2 border-t border-white/5 font-mono">
+                      <span>Milestones: {proj.milestones?.filter(m => m.completed).length || 0} / {proj.milestones?.length || 0}</span>
+                      <button 
+                        onClick={() => dbService.deleteProject(proj.id).then(loadData)}
+                        className="text-red-400 hover:text-red-300 transition-colors flex items-center gap-1 font-sans font-bold"
+                      >
+                        <Trash2 size={12} /> Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Dispatches Tab (Uber-style creator booking) */}
+        {activeTab === 'dispatches' && (
+          <motion.div
+            key="dispatches"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex flex-col gap-4"
+          >
+            <div className="flex justify-between items-center px-1">
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                Uber-Style Live Dispatch Grid ({dispatches.length})
+              </label>
+              <button 
+                onClick={loadData}
+                className="text-[10px] text-sleek-violet font-mono font-bold flex items-center gap-1 hover:underline"
+              >
+                <RefreshCw size={12} /> Live Sync
+              </button>
+            </div>
+
+            {dispatches.length === 0 ? (
+              <div className="bg-sleek-dark p-12 rounded-[40px] border border-white/5 flex flex-col items-center justify-center text-center gap-3">
+                <Zap size={48} className="text-white/10" />
+                <p className="text-xs text-white/40">No active creator dispatches at this moment.</p>
+                <p className="text-[10px] text-white/20">Client requests from the Dispatch screen will appear here.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {dispatches.map((disp) => {
+                  const nextStatusMap: Record<DispatchBooking['status'], DispatchBooking['status']> = {
+                    matching: 'en_route',
+                    en_route: 'arrived',
+                    arrived: 'shooting',
+                    shooting: 'completed',
+                    completed: 'completed'
+                  };
+                  const nextStatus = nextStatusMap[disp.status] || 'completed';
+
+                  return (
+                    <div key={disp.id} className="bg-sleek-dark p-6 rounded-[32px] border border-white/5 flex flex-col gap-4 shadow-xl">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-sleek-violet/20 text-sleek-violet">
+                              {disp.creatorTier.replace('_', ' ')}
+                            </span>
+                            <span className="text-white/20">•</span>
+                            <span className="text-[9px] font-black text-emerald-400 font-mono">
+                              ₹{disp.totalAmount?.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-bold text-white">📍 {disp.location}</h4>
+                          <p className="text-xs text-white/50 mt-1 italic">"{disp.shootBrief}"</p>
+                        </div>
+
+                        <span className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest ${
+                          disp.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
+                          disp.status === 'shooting' ? 'bg-rose-500/20 text-rose-400 animate-pulse' :
+                          'bg-amber-500/20 text-amber-400'
+                        }`}>
+                          {disp.status.replace('_', ' ')}
+                        </span>
+                      </div>
+
+                      {disp.assignedCreator && (
+                        <div className="p-3 bg-white/5 rounded-2xl flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <img src={disp.assignedCreator.avatar} className="w-7 h-7 rounded-full object-cover" />
+                            <div>
+                              <p className="text-xs font-bold text-white">{disp.assignedCreator.name}</p>
+                              <p className="text-[9px] text-white/40">{disp.assignedCreator.gear}</p>
+                            </div>
+                          </div>
+                          <span className="text-[9px] font-mono text-white/40">⭐ {disp.assignedCreator.rating}</span>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        {disp.status !== 'completed' && (
+                          <button
+                            onClick={() => handleAdvanceDispatch(disp.id, nextStatus)}
+                            className="flex-1 py-2.5 bg-sleek-violet hover:bg-sleek-violet/80 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
+                          >
+                            Advance to {nextStatus.replace('_', ' ')} →
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleAdvanceDispatch(disp.id, 'completed')}
+                          className="px-4 py-2.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-black rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
+                        >
+                          Sign-Off Complete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Activity Logs Tab */}
+        {activeTab === 'activityLogs' && (
+          <motion.div
+            key="activityLogs"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex flex-col gap-4"
+          >
+            <div className="flex justify-between items-center px-1">
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                Immutable Platform Activity Audit Log
+              </label>
+              <span className="text-[10px] text-emerald-400 font-mono">
+                Real-Time Auditing
+              </span>
+            </div>
+
+            <div className="bg-black/80 rounded-[32px] border border-white/10 p-5 font-mono text-xs max-h-[500px] overflow-y-auto flex flex-col gap-3">
+              {activityLogs.length === 0 ? (
+                <div className="text-center py-8 text-white/30">No activity recorded yet. System listening...</div>
+              ) : (
+                activityLogs.map((log) => (
+                  <div key={log.id} className="p-3 bg-white/5 rounded-xl border border-white/5 flex flex-col gap-1">
+                    <div className="flex justify-between items-center text-[10px]">
+                      <span className="text-sleek-violet font-bold uppercase">{log.action}</span>
+                      <span className="text-white/30">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                    <p className="text-[11px] text-white/80">{log.details}</p>
+                    <span className="text-[9px] text-white/30">User: {log.userId}</span>
                   </div>
                 ))
               )}

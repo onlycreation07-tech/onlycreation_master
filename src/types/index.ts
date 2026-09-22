@@ -93,3 +93,74 @@ export interface Booking {
   userId?: string;
   brandName?: string;
 }
+
+export type ProjectStage = 'ideation' | 'pre_production' | 'production' | 'review' | 'delivered';
+
+export interface ProjectMilestone {
+  id: string;
+  title: string;
+  dueDate?: string;
+  completed: boolean;
+  notes?: string;
+}
+
+export interface ProjectDeliverable {
+  id: string;
+  name: string;
+  url: string;
+  type: 'video' | 'image' | 'script' | 'brief';
+  uploadedAt: string;
+  size?: string;
+}
+
+export interface Project {
+  id: string;
+  userId: string;
+  title: string;
+  brandName: string;
+  stage: ProjectStage;
+  budget: number;
+  creativePrompt?: string;
+  assignedCreator?: {
+    id?: string;
+    name: string;
+    role: string;
+    avatar?: string;
+    handle?: string;
+  };
+  milestones: ProjectMilestone[];
+  deliverables: ProjectDeliverable[];
+  aiHealthScore?: number; // 0 - 100
+  aiRiskAnalysis?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectMessage {
+  id: string;
+  projectId: string;
+  senderId: string;
+  senderName: string; // Anonymous handle e.g. "Lead Cinematographer", "Client Rep"
+  senderRole: 'client' | 'creator' | 'producer' | 'admin';
+  content: string;
+  attachmentUrl?: string;
+  timestamp: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  action: string;
+  entityType: 'project' | 'studio' | 'booking' | 'dispatch' | 'system';
+  entityId: string;
+  performedBy: string;
+  details: string;
+  timestamp: string;
+}
+
+export interface AppConfig {
+  subscriptionPrice: number;
+  commissionRate: number; // e.g. 10%
+  panIndiaMode: boolean;
+  featureFlags?: Record<string, boolean>;
+}

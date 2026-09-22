@@ -91,7 +91,40 @@ service cloud.firestore {
       return data.subscriptionPrice is number && data.subscriptionPrice >= 0;
     }
 
+    function isValidProject(data) {
+      return data.keys().hasAll(['userId', 'title', 'stage'])
+        && (data.userId == request.auth.uid || isAdmin())
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && data.stage in ['ideation', 'pre_production', 'production', 'review', 'delivered'];
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['projectId', 'senderId', 'senderName', 'content'])
+        && data.senderId == request.auth.uid
+        && data.content is string && data.content.size() > 0 && data.content.size() <= 2000;
+    }
+
     // --- Match Blocks ---
+
+    match /projects/{projectId} {
+      allow create: if isSignedIn() && isValidProject(incoming());
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow update: if (isOwner(existing().userId) || isAdmin());
+      allow delete: if isOwner(existing().userId) || isAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow create: if isSignedIn() && isValidMessage(incoming());
+      allow read: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /activityLogs/{logId} {
+      allow create: if isSignedIn();
+      allow read: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
 
     // Admin List (Only Super Admin or established admins can read/write)
     match /admins/{userId} {
