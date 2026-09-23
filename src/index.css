@@ -7,3 +7,11 @@
   --color-sleek-violet: #7C3AED;
   --color-sleek-fuchsia: #C026D3;
 }
+
+html, body, #root {
+  background-color: #09090B;
+  color: #FFFFFF;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}

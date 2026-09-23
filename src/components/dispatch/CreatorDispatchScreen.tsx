@@ -91,11 +91,120 @@ const CREATOR_TIERS: CreatorTierOption[] = [
   }
 ];
 
+export interface StakeholderBid {
+  id: string;
+  name: string;
+  category: 'reel_creator' | 'videographer' | 'video_editor' | 'studio' | 'rental';
+  categoryLabel: string;
+  avatar: string;
+  rating: number;
+  shootsCompleted: number;
+  distance: string;
+  etaMinutes: number;
+  equipment: string;
+  vehicle: string;
+  price: number;
+  badge: string;
+}
+
+const LIVE_STAKEHOLDERS: StakeholderBid[] = [
+  {
+    id: 'sh_1',
+    name: 'Arjun Sharma',
+    category: 'reel_creator',
+    categoryLabel: 'Instant Reel Creator',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+    rating: 4.9,
+    shootsCompleted: 342,
+    distance: '350m away',
+    etaMinutes: 3,
+    equipment: 'iPhone 16 Pro • DJi Osmo Mobile 6 • Dual Wireless Mics',
+    vehicle: 'Ather 450X • KA-03-EV-2024',
+    price: 1499,
+    badge: '3-Min Dispatch'
+  },
+  {
+    id: 'sh_2',
+    name: 'Vikram Malhotra',
+    category: 'videographer',
+    categoryLabel: 'Pro Cinema Videographer',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+    rating: 5.0,
+    shootsCompleted: 188,
+    distance: '1.1km away',
+    etaMinutes: 6,
+    equipment: 'Sony FX3 Cinema Line • Sony G-Master 24-70 f2.8 • Ronin RS3',
+    vehicle: 'Royal Enfield Hunter • KA-01-HE-8819',
+    price: 3999,
+    badge: '4K Color Graded'
+  },
+  {
+    id: 'sh_3',
+    name: 'Priya Rao',
+    category: 'reel_creator',
+    categoryLabel: 'Viral Food & Fashion Creator',
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80',
+    rating: 4.9,
+    shootsCompleted: 215,
+    distance: '650m away',
+    etaMinutes: 4,
+    equipment: 'iPhone 16 Pro Max • Pocket Tube LED • Wireless Hollyland Mic',
+    vehicle: 'Ola S1 Pro • KA-05-AB-1290',
+    price: 1699,
+    badge: 'High Engagement'
+  },
+  {
+    id: 'sh_4',
+    name: 'Rohan Das',
+    category: 'video_editor',
+    categoryLabel: 'Fast Turnaround Editor & Colorist',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
+    rating: 4.9,
+    shootsCompleted: 410,
+    distance: 'Cloud Ingest Standby',
+    etaMinutes: 0,
+    equipment: 'DaVinci Resolve Studio 19 • Apple M3 Max • 10Gbps Fiber',
+    vehicle: 'Remote Cloud Queue',
+    price: 1200,
+    badge: 'Same-Day Reel Delivery'
+  },
+  {
+    id: 'sh_5',
+    name: 'The Daylight Loft',
+    category: 'studio',
+    categoryLabel: 'Acoustic & Daylight Soundstage',
+    avatar: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400&auto=format&fit=crop&q=80',
+    rating: 4.8,
+    shootsCompleted: 520,
+    distance: '800m away (Indiranagar)',
+    etaMinutes: 5,
+    equipment: 'Cyclorama Wall • Profoto B10X Strobes • Aputure Nova P300c',
+    vehicle: 'Stage Slot Reserved',
+    price: 2200,
+    badge: 'Soundproof Stage'
+  },
+  {
+    id: 'sh_6',
+    name: 'GearFleet Courier',
+    category: 'rental',
+    categoryLabel: 'Express Camera & Lighting Courier',
+    avatar: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&auto=format&fit=crop&q=80',
+    rating: 4.9,
+    shootsCompleted: 890,
+    distance: '1.4km away',
+    etaMinutes: 12,
+    equipment: 'Aputure 300d II • C-Stands • Wireless Lavalier Mics Kit',
+    vehicle: 'Express Delivery Van',
+    price: 2499,
+    badge: 'Gear In-Transit'
+  }
+];
+
 export default function CreatorDispatchScreen({ brandProfile, onBackToHome }: CreatorDispatchScreenProps) {
   const { user } = useAuth();
   
-  // Dispatch phase: 'select' -> 'en_route' -> 'completed'
-  const [phase, setPhase] = useState<'select' | 'en_route' | 'completed'>('select');
+  // Dispatch phase: 'select' -> 'searching' -> 'en_route' -> 'completed'
+  const [phase, setPhase] = useState<'select' | 'searching' | 'en_route' | 'completed'>('select');
   
   // Selection States
   const [selectedTier, setSelectedTier] = useState<CreatorTierOption>(CREATOR_TIERS[0]);
@@ -105,6 +214,12 @@ export default function CreatorDispatchScreen({ brandProfile, onBackToHome }: Cr
   const [briefPrompt, setBriefPrompt] = useState('Trendy 15-sec Instagram Reel showcasing new espresso drinks with aesthetic transitions.');
   const [paymentMethod, setPaymentMethod] = useState('UPI / Cards / Instant Wallet');
   const [paymentOrder, setPaymentOrder] = useState<PaymentOrder | null>(null);
+
+  // Uber Radar Search States
+  const [searchCountdown, setSearchCountdown] = useState(6);
+  const [searchStakeholderFilter, setSearchStakeholderFilter] = useState<'all' | 'reel_creator' | 'videographer' | 'video_editor' | 'studio' | 'rental'>('all');
+  const [incomingBids, setIncomingBids] = useState<StakeholderBid[]>([]);
+  const [searchRadiusKm, setSearchRadiusKm] = useState(3.5);
 
   // Active Dispatch State
   const [activeDispatch, setActiveDispatch] = useState<DispatchBooking | null>(null);
@@ -133,22 +248,68 @@ export default function CreatorDispatchScreen({ brandProfile, onBackToHome }: Cr
     return () => clearInterval(timer);
   }, [phase, etaSeconds]);
 
-  // Handle Instant Dispatch
-  const handleConfirmDispatch = async () => {
+  // Uber Radar Search Effect: countdown and streaming incoming bids
+  useEffect(() => {
+    let timer: any;
+    let bidInterval: any;
+
+    if (phase === 'searching') {
+      // Initialize with closest reel creator
+      setIncomingBids([LIVE_STAKEHOLDERS[0]]);
+      setSearchCountdown(6);
+
+      // Incrementally receive bids from other stakeholders
+      bidInterval = setInterval(() => {
+        setIncomingBids(prev => {
+          if (prev.length < LIVE_STAKEHOLDERS.length) {
+            return [...prev, LIVE_STAKEHOLDERS[prev.length]];
+          }
+          return prev;
+        });
+      }, 1200);
+
+      // Countdown to auto-lock best available match
+      timer = setInterval(() => {
+        setSearchCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            clearInterval(bidInterval);
+            // Auto lock best match (default to selected tier or first bid)
+            const matchedBid = selectedTier.id === 'dslr_pro' ? LIVE_STAKEHOLDERS[1] : LIVE_STAKEHOLDERS[0];
+            handleLockInMatch(matchedBid);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(bidInterval);
+    };
+  }, [phase, selectedTier]);
+
+  // Handle Instant Dispatch Trigger (Launches Uber Radar Search)
+  const handleConfirmDispatch = () => {
+    setPhase('searching');
+  };
+
+  // Lock in match with specific stakeholder
+  const handleLockInMatch = async (bid: StakeholderBid) => {
+    const calculatedPrice = bid.price * (durationHours > 1 ? 1 + (durationHours - 1) * 0.7 : 1);
     const dispatchPayload: Omit<DispatchBooking, 'id' | 'createdAt'> = {
       userId: user?.uid || 'guest_user',
-      creatorTier: selectedTier.id,
-      creatorName: selectedTier.id === 'instagrammer' ? 'Arjun Sharma' : selectedTier.id === 'dslr_pro' ? 'Vikram Malhotra' : 'Aura Agency Crew',
-      creatorPhoto: selectedTier.id === 'instagrammer' 
-        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'
-        : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
-      creatorHandle: selectedTier.id === 'instagrammer' ? '@arjun_reels_pro' : '@vikram_cinematics',
-      creatorEquipment: selectedTier.equipment,
-      vehicleInfo: 'Ather 450X • KA-03-EV-2024',
+      creatorTier: (bid.category === 'videographer' ? 'dslr_pro' : 'instagrammer') as any,
+      creatorName: bid.name,
+      creatorPhoto: bid.avatar,
+      creatorHandle: `@${bid.name.toLowerCase().replace(/\s+/g, '_')}_pro`,
+      creatorEquipment: bid.equipment,
+      vehicleInfo: bid.vehicle,
       pickupLocation: startLocation,
       shootLocation: shootLocation,
       durationHours: durationHours,
-      totalPrice: selectedTier.price * (durationHours > 1 ? 1 + (durationHours - 1) * 0.7 : 1),
+      totalPrice: Math.round(calculatedPrice),
       status: 'en_route',
       briefPrompt: briefPrompt,
       deliveredReelUrl: 'https://assets.mixkit.co/videos/preview/mixkit-barista-pouring-coffee-art-in-a-cafe-41558-large.mp4'
@@ -156,7 +317,17 @@ export default function CreatorDispatchScreen({ brandProfile, onBackToHome }: Cr
 
     setActiveDispatch(dispatchPayload as DispatchBooking);
     setDispatchStatus('en_route');
+    setEtaSeconds(bid.etaMinutes * 60);
     setPhase('en_route');
+
+    // Add first confirmation chat message
+    setChatMessages([
+      {
+        sender: 'creator',
+        text: `Namaste! I'm ${bid.name}. Accepted your request for ${shootLocation}. Gear packed, heading over now!`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
 
     // Save to Firestore asynchronously
     try {
@@ -167,6 +338,10 @@ export default function CreatorDispatchScreen({ brandProfile, onBackToHome }: Cr
     } catch (err) {
       console.error("Firestore dispatch save note:", err);
     }
+  };
+
+  const handleCancelSearch = () => {
+    setPhase('select');
   };
 
   const handleSendChatMessage = () => {
@@ -287,6 +462,72 @@ export default function CreatorDispatchScreen({ brandProfile, onBackToHome }: Cr
           </div>
           <div className="w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-[0_0_15px_rgba(239,68,68,0.8)] animate-ping"></div>
         </div>
+
+        {/* Uber Live Sonar Radar when searching */}
+        {phase === 'searching' && (
+          <div className="absolute top-[65%] left-[60%] -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+            {/* Concentric sonar rings */}
+            {[1, 2, 3].map((ring) => (
+              <motion.div
+                key={ring}
+                className="absolute rounded-full border border-sleek-violet/40 bg-sleek-violet/5"
+                initial={{ width: 40, height: 40, opacity: 0.8, x: -20, y: -20 }}
+                animate={{ width: 360, height: 360, opacity: 0, x: -180, y: -180 }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  delay: ring * 0.9,
+                  ease: 'easeOut',
+                }}
+              />
+            ))}
+
+            {/* Rotating Sonar Radar Beam */}
+            <motion.div
+              className="absolute w-44 h-44 origin-bottom-right -top-44 -left-44"
+              style={{
+                background: 'conic-gradient(from 0deg at 100% 100%, rgba(124,58,237,0.35) 0deg, transparent 60deg)',
+              }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+            />
+          </div>
+        )}
+
+        {/* Stakeholder Pings Appearing on Map during Search */}
+        {phase === 'searching' && (
+          <>
+            {incomingBids.map((bid, idx) => {
+              const positions = [
+                { top: '30%', left: '25%' },
+                { top: '48%', left: '75%' },
+                { top: '22%', left: '60%' },
+                { top: '78%', left: '20%' },
+                { top: '38%', left: '42%' },
+                { top: '72%', left: '80%' },
+              ];
+              const pos = positions[idx % positions.length];
+              return (
+                <motion.div
+                  key={bid.id}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', damping: 15 }}
+                  className="absolute z-20 flex flex-col items-center cursor-pointer"
+                  style={pos}
+                  onClick={() => handleLockInMatch(bid)}
+                >
+                  <div className="bg-sleek-dark text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-sleek-violet shadow-lg shadow-sleek-violet/30 flex items-center gap-1 whitespace-nowrap">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span>{bid.name.split(' ')[0]}</span>
+                    <span className="text-sleek-violet font-black">₹{bid.price}</span>
+                  </div>
+                  <div className="w-3 h-3 rounded-full bg-sleek-violet border-2 border-white shadow-[0_0_10px_rgba(124,58,237,1)]" />
+                </motion.div>
+              );
+            })}
+          </>
+        )}
 
         {/* En Route Moving Vehicle / Creator Marker */}
         {phase === 'en_route' && (
@@ -490,6 +731,175 @@ export default function CreatorDispatchScreen({ brandProfile, onBackToHome }: Cr
             <Zap size={20} className="fill-current" />
             Dispatch {selectedTier.title}
           </button>
+        </div>
+      )}
+
+      {/* PHASE: UBER-STYLE MULTI-STAKEHOLDER RADAR SEARCH */}
+      {phase === 'searching' && (
+        <div className="flex-1 p-4 max-w-xl mx-auto w-full flex flex-col gap-4 -mt-6 relative z-30">
+          
+          {/* Top Live Search Radar Card */}
+          <div className="bg-gradient-to-r from-sleek-violet/25 via-sleek-fuchsia/20 to-purple-900/25 border border-sleek-violet/40 p-4 rounded-3xl shadow-2xl flex flex-col gap-3 backdrop-blur-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative flex items-center justify-center">
+                  <div className="w-4 h-4 rounded-full bg-emerald-400 animate-ping"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 absolute"></div>
+                </div>
+                <div>
+                  <h3 className="text-sm font-black tracking-tight text-white flex items-center gap-1.5">
+                    Broadcasting Live Shoot Request
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-sleek-violet text-white font-extrabold uppercase tracking-wider">
+                      Uber Video Grid
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-white/60">
+                    Pinging 18 verified creators & partners within {searchRadiusKm} km • {startLocation}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-base font-black text-white font-mono">
+                  00:0{searchCountdown}s
+                </div>
+                <span className="text-[9px] uppercase tracking-widest text-emerald-400 font-extrabold">
+                  Auto Matching
+                </span>
+              </div>
+            </div>
+
+            {/* Radar scan progress line */}
+            <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+              <motion.div 
+                className="h-full bg-gradient-to-r from-emerald-400 via-sleek-violet to-sleek-fuchsia"
+                initial={{ width: '10%' }}
+                animate={{ width: '100%' }}
+                transition={{ duration: 6, ease: 'linear' }}
+              />
+            </div>
+
+            {/* Live Stakeholder Status Ticker */}
+            <div className="flex items-center justify-between text-[10px] text-white/50 pt-1 border-t border-white/5">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-sleek-violet animate-pulse" />
+                <span>Broadcasting to Reel Creators, Videographers, Editors & Studios</span>
+              </span>
+              <span className="font-bold text-white/80">{incomingBids.length} of 6 Stakeholders Responded</span>
+            </div>
+          </div>
+
+          {/* Stakeholder Category Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            {[
+              { id: 'all', label: `All Stakeholders (${incomingBids.length})` },
+              { id: 'reel_creator', label: '📱 Reel Creators' },
+              { id: 'videographer', label: '🎥 Pro Cinema' },
+              { id: 'video_editor', label: '✂️ Video Editors' },
+              { id: 'studio', label: '🏢 Studios' },
+              { id: 'rental', label: '📦 Gear Couriers' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setSearchStakeholderFilter(tab.id as any)}
+                className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold whitespace-nowrap transition-all border ${
+                  searchStakeholderFilter === tab.id
+                    ? 'bg-sleek-violet text-white border-sleek-violet shadow-md'
+                    : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Incoming Stakeholder Bids List */}
+          <div className="flex flex-col gap-3">
+            <AnimatePresence>
+              {incomingBids
+                .filter(b => searchStakeholderFilter === 'all' || b.category === searchStakeholderFilter)
+                .map((bid, index) => (
+                  <motion.div
+                    key={bid.id}
+                    initial={{ opacity: 0, y: 15, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className="bg-sleek-dark p-4 rounded-3xl border border-white/10 shadow-xl flex flex-col gap-3 hover:border-sleek-violet/40 transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <img 
+                            src={bid.avatar} 
+                            alt={bid.name} 
+                            className="w-12 h-12 rounded-2xl object-cover border border-white/10"
+                            referrerPolicy="no-referrer"
+                          />
+                          <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-sleek-dark rounded-full" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-extrabold text-sm text-white">{bid.name}</h4>
+                            <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-sleek-violet/20 text-sleek-violet border border-sleek-violet/30">
+                              {bid.badge}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-white/60 font-medium">{bid.categoryLabel}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] text-amber-400 font-bold flex items-center gap-0.5">
+                              <Star size={10} className="fill-amber-400 text-amber-400" />
+                              {bid.rating}
+                            </span>
+                            <span className="text-[10px] text-white/40">• {bid.shootsCompleted} Shoots</span>
+                            <span className="text-[10px] text-emerald-400 font-semibold">• {bid.distance}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-lg font-black text-white tracking-tight">
+                          ₹{bid.price.toLocaleString()}
+                        </div>
+                        <span className="text-[9px] text-white/40 uppercase font-bold tracking-wider">
+                          Instant Rate
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Gear / Vehicle Specs */}
+                    <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 flex items-center justify-between text-[11px] text-white/70">
+                      <div className="flex items-center gap-1.5 truncate mr-2">
+                        <Camera size={13} className="text-sleek-violet shrink-0" />
+                        <span className="truncate font-medium">{bid.equipment}</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-white/50 shrink-0 bg-white/5 px-2 py-0.5 rounded">
+                        {bid.vehicle}
+                      </span>
+                    </div>
+
+                    {/* Accept Bid Button */}
+                    <button
+                      onClick={() => handleLockInMatch(bid)}
+                      className="w-full bg-gradient-to-r from-sleek-violet to-sleek-fuchsia hover:brightness-110 text-white font-extrabold text-xs py-2.5 rounded-xl shadow-lg shadow-sleek-violet/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                    >
+                      <Zap size={14} className="fill-current" />
+                      <span>Lock In Match & Dispatch ({bid.name.split(' ')[0]})</span>
+                    </button>
+                  </motion.div>
+                ))}
+            </AnimatePresence>
+          </div>
+
+          {/* Cancel Broadcast / Search Button */}
+          <div className="pt-2 flex justify-center">
+            <button
+              onClick={handleCancelSearch}
+              className="text-xs font-bold text-white/40 hover:text-red-400 transition-colors py-2 px-4 rounded-xl border border-white/5 hover:border-red-500/20"
+            >
+              Cancel Search & Modify Parameters
+            </button>
+          </div>
         </div>
       )}
 

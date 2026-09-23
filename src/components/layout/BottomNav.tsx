@@ -16,7 +16,6 @@ export default function BottomNav({ currentView, onViewChange }: BottomNavProps)
     { id: 'create', icon: PlusSquare, label: 'Create' },
     { id: 'studios', icon: MapPin, label: 'Studios' },
     { id: 'projects', icon: FolderOpen, label: 'Projects' },
-    { id: 'profile', icon: User, label: 'Profile' },
   ];
 
 

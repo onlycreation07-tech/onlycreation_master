@@ -7,14 +7,15 @@ interface ProfileScreenProps {
   brandProfile: BrandProfile;
   onUpdateBrand: (profile: BrandProfile) => void;
   onNavigateToLiked: () => void;
+  onNavigateToPartner?: () => void;
 }
 
-export default function ProfileScreen({ brandProfile, onUpdateBrand, onNavigateToLiked }: ProfileScreenProps) {
-  const { user, isSuperAdmin, isAdmin } = useAuth();
+export default function ProfileScreen({ brandProfile, onUpdateBrand, onNavigateToLiked, onNavigateToPartner }: ProfileScreenProps) {
+  const { user, isSuperAdmin, isAdmin, partnerRole, logoutUser } = useAuth();
 
   const menuItems = [
     { icon: Building2, label: 'Saved Studios', detail: `${brandProfile.likedStudioIds?.length || 0} locations`, action: onNavigateToLiked },
-    { icon: CreditCard, label: 'Billing & Subscriptions', detail: 'Pro Plan • $499/mo' },
+    { icon: CreditCard, label: 'Billing & Subscriptions', detail: 'Pro Plan • Active' },
     { icon: Users, label: 'Team Members', detail: '2 collaborators' },
     { icon: Shield, label: 'Security & Privacy', detail: 'Protected' },
   ];
@@ -125,12 +126,32 @@ export default function ProfileScreen({ brandProfile, onUpdateBrand, onNavigateT
         ))}
       </div>
 
+      {onNavigateToPartner && (
+        <button
+          type="button"
+          onClick={onNavigateToPartner}
+          className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-950/80 via-teal-950/60 to-sleek-dark border border-emerald-500/40 rounded-2xl text-emerald-300 font-extrabold text-xs hover:border-emerald-400 transition-all shadow-xl active:scale-[0.99] cursor-pointer"
+        >
+          <div className="flex items-center gap-3 text-left">
+            <div className="p-2.5 bg-emerald-500/20 text-emerald-400 rounded-xl">
+              <RefreshCw size={16} />
+            </div>
+            <div>
+              <p className="text-white font-black text-xs">Switch to Creator / Partner Portal</p>
+              <p className="text-[10px] text-emerald-400 font-medium">Reel Shoots • DaVinci Editing • Gear Rental • Studios</p>
+            </div>
+          </div>
+          <ChevronRight size={16} className="text-emerald-400 shrink-0" />
+        </button>
+      )}
+
       <button 
-        onClick={() => logout()}
-        className="flex items-center justify-center gap-2 p-5 bg-red-500/5 border border-red-500/10 rounded-2xl text-red-500 font-bold text-sm hover:bg-red-500 hover:text-white transition-all group mt-4 active:scale-95"
+        type="button"
+        onClick={() => logoutUser()}
+        className="flex items-center justify-center gap-2 p-5 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-400 font-bold text-sm hover:bg-red-500 hover:text-white transition-all group mt-2 active:scale-95 shadow-lg shadow-red-500/10 cursor-pointer"
       >
         <LogOut size={18} />
-        Sign Out Securely
+        Log Out of OnlyCreation
       </button>
 
       <div className="text-center mt-4">

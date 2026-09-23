@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInAnonymously, signOut, updateProfile } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -11,6 +11,13 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
+export const signInAnonymouslyAuth = (displayName = 'Creator Partner') => 
+  signInAnonymously(auth).then(async (cred) => {
+    if (cred.user && !cred.user.displayName) {
+      await updateProfile(cred.user, { displayName });
+    }
+    return cred;
+  });
 export const logout = () => signOut(auth);
 
 // Validate connection on boot as per instructions

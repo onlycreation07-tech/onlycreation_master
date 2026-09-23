@@ -1,4 +1,4 @@
-export type View = 'home' | 'create' | 'studios' | 'projects' | 'profile' | 'admin' | 'billboards' | 'dispatch';
+export type View = 'home' | 'create' | 'studios' | 'projects' | 'profile' | 'admin' | 'billboards' | 'dispatch' | 'partner';
 
 export interface DispatchBooking {
   id?: string;

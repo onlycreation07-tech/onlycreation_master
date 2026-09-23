@@ -15,6 +15,7 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import LoginScreen from './components/auth/LoginScreen';
 import BillboardRequestScreen from './components/billboards/BillboardRequestScreen';
 import CreatorDispatchScreen from './components/dispatch/CreatorDispatchScreen';
+import PartnerPortal from './components/partner/PartnerPortal';
 import { AnimatePresence, motion } from 'motion/react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { validateConnection } from './lib/firebase';
@@ -41,6 +42,12 @@ function AppContent() {
     validateConnection();
   }, []);
 
+  useEffect(() => {
+    if ((user as any)?.isPartner) {
+      setCurrentView('partner');
+    }
+  }, [user]);
+
   const handleCreativeGenerated = (creative: AdCreative) => {
     setCreatives([creative, ...creatives]);
     setActiveCreative(creative);
@@ -61,6 +68,15 @@ function AppContent() {
 
   if (!user) {
     return <LoginScreen />;
+  }
+
+  // If partner portal is active, render dedicated full-width partner interface
+  if (currentView === 'partner') {
+    return (
+      <div className="min-h-screen bg-sleek-black text-white font-sans selection:bg-sleek-violet selection:text-white">
+        <PartnerPortal onSwitchToClientMode={() => setCurrentView('home')} />
+      </div>
+    );
   }
 
   const handleToggleLike = (studioId: string) => {
@@ -89,6 +105,9 @@ function AppContent() {
             onUseTemplate={(p) => setCurrentView('create')} 
             onExploreBillboards={() => setCurrentView('billboards')}
             onLaunchDispatch={() => setCurrentView('dispatch')}
+            onNavigateToStudios={() => setCurrentView('studios')}
+            onNavigateToProfile={() => setCurrentView('profile')}
+            onNavigateToPartner={() => setCurrentView('partner')}
             brandName={brandProfile.name} 
           />
         );
@@ -100,11 +119,12 @@ function AppContent() {
           />
         );
       case 'create':
-
         return (
           <CreateScreen 
             onGenerated={handleCreativeGenerated} 
             onProduce={handleProduceAd} 
+            onLaunchDispatch={() => setCurrentView('dispatch')}
+            onConvertToProject={() => setCurrentView('projects')}
             brandProfile={brandProfile}
           />
         );
@@ -128,6 +148,13 @@ function AppContent() {
               setStudioCategory('liked');
               setCurrentView('studios');
             }}
+            onNavigateToPartner={() => setCurrentView('partner')}
+          />
+        );
+      case 'partner':
+        return (
+          <PartnerPortal 
+            onSwitchToClientMode={() => setCurrentView('home')} 
           />
         );
       case 'billboards':

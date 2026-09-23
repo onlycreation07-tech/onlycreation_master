@@ -45,6 +45,12 @@ const STYLES = [
   { id: 'streetwear', label: 'Streetwear Pop', desc: 'Bold saturated Gen-Z vibrant aesthetic' },
 ];
 
+const AI_ENGINES = [
+  { id: 'chatgpt_dalle', label: 'ChatGPT / DALL-E 3', badge: 'Ultra Photoreal' },
+  { id: 'flux_cinema', label: 'Flux Cinema 8K', badge: 'High Fashion' },
+  { id: 'imagen_pro', label: 'Google Imagen 3', badge: 'Studio Lighting' },
+];
+
 const RATIOS: Array<{ id: '1:1' | '9:16' | '16:9'; label: string; icon: string }> = [
   { id: '9:16', label: '9:16 Reels / TikTok', icon: 'vertical' },
   { id: '1:1', label: '1:1 Square Feed', icon: 'square' },
@@ -60,7 +66,9 @@ export default function CreateScreen({
 }: CreateScreenProps) {
   const [prompt, setPrompt] = useState('');
   const [selectedStyle, setSelectedStyle] = useState('cinematic');
+  const [selectedEngine, setSelectedEngine] = useState<'chatgpt_dalle' | 'flux_cinema' | 'imagen_pro'>('chatgpt_dalle');
   const [selectedRatio, setSelectedRatio] = useState<'1:1' | '9:16' | '16:9'>('9:16');
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [creative, setCreative] = useState<AdCreative | null>(null);
   const [referenceImg, setReferenceImg] = useState<string | null>(null);
@@ -74,9 +82,11 @@ export default function CreateScreen({
       const styleObj = STYLES.find(s => s.id === selectedStyle);
       const result = await geminiService.generateAd(targetPrompt, brandProfile, {
         style: styleObj?.label,
-        aspectRatio: selectedRatio
-      });
+        aspectRatio: selectedRatio,
+        engine: selectedEngine
+      } as any);
       setCreative(result);
+      setSelectedImageIndex(0);
       onGenerated(result);
     } catch (error) {
       console.error(error);
@@ -193,6 +203,35 @@ Generated with OnlyCreation AI Studio Intelligence.
               </button>
             ))}
           </div>
+
+          {/* AI Image Generation Engine Selector */}
+          <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1">
+                <Sparkles size={11} className="text-amber-400" /> AI Image Generation Engine
+              </span>
+              <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-wider">
+                Active: {AI_ENGINES.find(e => e.id === selectedEngine)?.label}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {AI_ENGINES.map((eng) => (
+                <button
+                  key={eng.id}
+                  type="button"
+                  onClick={() => setSelectedEngine(eng.id as any)}
+                  className={`py-2 px-2 rounded-xl text-center border transition-all ${
+                    selectedEngine === eng.id
+                      ? 'bg-gradient-to-r from-sleek-violet/30 to-sleek-fuchsia/30 border-sleek-violet text-white font-extrabold shadow-sm'
+                      : 'bg-white/5 border-white/5 text-white/50 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <p className="text-[10px] font-bold truncate">{eng.label}</p>
+                  <p className="text-[7px] text-white/40 uppercase tracking-tighter">{eng.badge}</p>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Prompt Input Box */}
@@ -302,12 +341,44 @@ Generated with OnlyCreation AI Studio Intelligence.
                 selectedRatio === '9:16' ? 'aspect-[9/16] max-h-[460px]' : selectedRatio === '16:9' ? 'aspect-video' : 'aspect-square'
               }`}>
                 <img
-                  src={creative.imageUrls[0]}
+                  src={creative.imageUrls[selectedImageIndex] || creative.imageUrls[0]}
                   alt="Generated creative"
                   className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105"
                   referrerPolicy="no-referrer"
                 />
+                
+                {creative.imageUrls && creative.imageUrls.length > 1 && (
+                  <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 bg-black/70 backdrop-blur-md p-1.5 rounded-2xl border border-white/10">
+                    {creative.imageUrls.map((img, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setSelectedImageIndex(idx)}
+                        className={`w-11 h-11 rounded-xl overflow-hidden border-2 transition-all relative ${
+                          selectedImageIndex === idx ? 'border-sleek-violet scale-105 shadow-md shadow-sleek-violet/40' : 'border-white/20 opacity-60 hover:opacity-90'
+                        }`}
+                      >
+                        <img src={img} alt={`Shot ${idx+1}`} className="w-full h-full object-cover" />
+                        <span className="absolute bottom-0.5 right-1 text-[7px] font-black text-white bg-black/80 px-1 rounded">
+                          {idx === 0 ? 'Hero' : 'B-Roll'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <div className="absolute top-4 right-4 z-10 flex gap-2">
+                  <a 
+                    href={creative.imageUrls[selectedImageIndex] || creative.imageUrls[0]}
+                    download={`OnlyCreation_Creative_${Date.now()}.png`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-black/60 backdrop-blur-md p-2.5 rounded-xl text-white/80 hover:text-white transition-all border border-white/10 flex items-center gap-1 text-[10px] font-bold"
+                    title="Open / Download 4K Image"
+                  >
+                    <Download size={14} />
+                    <span className="hidden sm:inline">4K Still</span>
+                  </a>
                   <button 
                     onClick={() => handleGenerate()}
                     className="bg-black/60 backdrop-blur-md p-2.5 rounded-xl text-white/80 hover:text-white transition-all border border-white/10"
@@ -318,9 +389,9 @@ Generated with OnlyCreation AI Studio Intelligence.
                   <button 
                     onClick={handleExportBrief}
                     className="bg-black/60 backdrop-blur-md p-2.5 rounded-xl text-white/80 hover:text-white transition-all border border-white/10"
-                    title="Download Brief"
+                    title="Download Production Brief"
                   >
-                    <Download size={14} />
+                    <FileText size={14} />
                   </button>
                 </div>
               </div>

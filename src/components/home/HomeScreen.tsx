@@ -3,7 +3,7 @@ import {
   Camera, 
   Sparkles, 
   ArrowRight, 
-  LogOut, 
+  User, 
   MapPin, 
   Zap, 
   Smartphone, 
@@ -20,7 +20,6 @@ import {
   Tv
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { logout } from '../../lib/firebase';
 import { dbService } from '../../services/dbService';
 import { Studio } from '../../types';
 import { INSPIRATION_ITEMS, MOCK_STUDIOS } from '../../constants/mockData';
@@ -33,6 +32,8 @@ interface HomeScreenProps {
   onExploreBillboards: () => void;
   onLaunchDispatch?: () => void;
   onNavigateToStudios?: () => void;
+  onNavigateToProfile?: () => void;
+  onNavigateToPartner?: () => void;
   brandName: string;
 }
 
@@ -41,6 +42,8 @@ export default function HomeScreen({
   onExploreBillboards, 
   onLaunchDispatch, 
   onNavigateToStudios,
+  onNavigateToProfile,
+  onNavigateToPartner,
   brandName 
 }: HomeScreenProps) {
   const [liveStudios, setLiveStudios] = useState<Studio[]>([]);
@@ -147,18 +150,27 @@ export default function HomeScreen({
           <p className="text-white/40 text-[9px] uppercase font-extrabold tracking-[0.25em] ml-9">Studio Ready • Live Grid</p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10 flex items-center gap-1.5 shadow-sm">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-            <span className="text-[9px] font-extrabold text-white/80 tracking-widest uppercase">Live Nodes</span>
-          </div>
+        <div className="flex items-center gap-2">
+          {onNavigateToPartner && (
+            <button
+              type="button"
+              onClick={onNavigateToPartner}
+              className="px-2.5 py-1.5 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border border-emerald-500/40 rounded-xl text-emerald-300 transition-all active:scale-95 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider"
+              title="Switch to Creator / Partner Portal"
+            >
+              <Zap size={13} className="text-amber-400 fill-amber-400" />
+              <span>Partner</span>
+            </button>
+          )}
 
           <button 
-            onClick={() => logout()}
-            className="p-2 bg-white/5 rounded-xl border border-white/10 text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all active:scale-95"
-            title="Log Out"
+            type="button"
+            onClick={() => onNavigateToProfile && onNavigateToProfile()}
+            className="p-2 bg-white/5 hover:bg-sleek-violet/20 border border-white/10 hover:border-sleek-violet/40 rounded-xl text-white/80 hover:text-white transition-all active:scale-95 flex items-center gap-1.5"
+            title="Open Profile & Settings"
           >
-            <LogOut size={15} />
+            <User size={15} className="text-sleek-violet" />
+            <span className="text-[9px] font-extrabold uppercase tracking-wider hidden sm:inline">Profile</span>
           </button>
         </div>
       </header>

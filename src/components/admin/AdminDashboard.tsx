@@ -29,8 +29,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { dbService } from '../../services/dbService';
 import { Studio, BillboardEnquiry, Booking, Project, DispatchBooking, ActivityLog, ProjectStage } from '../../types';
 import { MOCK_STUDIOS } from '../../constants/mockData';
+import AdminStakeholdersOps from './AdminStakeholdersOps';
 
-type AdminTab = 'overview' | 'studios' | 'projects' | 'dispatches' | 'bookings' | 'enquiries' | 'activityLogs';
+type AdminTab = 'overview' | 'stakeholders' | 'studios' | 'projects' | 'dispatches' | 'bookings' | 'enquiries' | 'activityLogs';
 
 export default function AdminDashboard() {
   const [studios, setStudios] = useState<Studio[]>([]);
@@ -234,6 +235,7 @@ export default function AdminDashboard() {
       <div className="flex gap-2 overflow-x-auto hide-scrollbar p-1 bg-white/5 rounded-2xl border border-white/5">
         {[
           { id: 'overview', label: 'Overview', icon: BarChart3 },
+          { id: 'stakeholders', label: 'Stakeholders & Ops', icon: Briefcase },
           { id: 'projects', label: `Projects (${projects.length})`, icon: FolderCheck },
           { id: 'dispatches', label: `Dispatches (${dispatches.length})`, icon: Zap },
           { id: 'studios', label: `Studios (${studios.length})`, icon: Layers },
@@ -377,6 +379,18 @@ export default function AdminDashboard() {
               </button>
             </section>
 
+          </motion.div>
+        )}
+
+        {activeTab === 'stakeholders' && (
+          <motion.div 
+            key="stakeholders"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex flex-col gap-6"
+          >
+            <AdminStakeholdersOps />
           </motion.div>
         )}
 
