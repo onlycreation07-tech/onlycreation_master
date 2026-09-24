@@ -29,13 +29,17 @@ import {
   Lock,
   ArrowRight,
   ShieldCheck,
-  Video
+  Video,
+  Zap,
+  FolderOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface ProjectsScreenProps {
   creatives: AdCreative[];
   onOpenCreate?: () => void;
+  onDispatchCreator?: () => void;
+  initialProjectId?: string | null;
 }
 
 const STAGES: Array<{ id: ProjectStage; label: string; color: string }> = [
@@ -129,7 +133,12 @@ const DEFAULT_PROJECTS: Project[] = [
   }
 ];
 
-export default function ProjectsScreen({ creatives, onOpenCreate }: ProjectsScreenProps) {
+export default function ProjectsScreen({ 
+  creatives, 
+  onOpenCreate,
+  onDispatchCreator,
+  initialProjectId
+}: ProjectsScreenProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'pipelines' | 'creatives'>('pipelines');
   const [projects, setProjects] = useState<Project[]>(DEFAULT_PROJECTS);
@@ -148,6 +157,17 @@ export default function ProjectsScreen({ creatives, onOpenCreate }: ProjectsScre
   const [messages, setMessages] = useState<ProjectMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isAnalyzingHealth, setIsAnalyzingHealth] = useState(false);
+
+  // Auto-open initial project if passed
+  useEffect(() => {
+    if (initialProjectId && projects.length > 0) {
+      const match = projects.find(p => p.id === initialProjectId);
+      if (match) {
+        setSelectedProject(match);
+        setActiveTab('pipelines');
+      }
+    }
+  }, [initialProjectId, projects]);
 
   // Load Projects from DB or Fallback
   useEffect(() => {
@@ -410,107 +430,153 @@ export default function ProjectsScreen({ creatives, onOpenCreate }: ProjectsScre
 
       {/* Active Pipelines View */}
       {activeTab === 'pipelines' && (
-        <div className="flex flex-col gap-4">
-          {projects.map((project, idx) => {
-            const completedCount = project.milestones.filter(m => m.completed).length;
-            const progressPct = project.milestones.length > 0 
-              ? Math.round((completedCount / project.milestones.length) * 100) 
-              : 0;
-            const currentStageObj = STAGES.find(s => s.id === project.stage) || STAGES[0];
+        projects.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-4 py-16 px-4 text-center bg-sleek-dark/30 rounded-3xl border border-white/5">
+            <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 text-sleek-violet shadow-xl">
+              <FolderOpen size={32} />
+            </div>
+            <div className="max-w-[280px]">
+              <h3 className="text-lg font-black text-white mb-1">Your production pipeline is empty</h3>
+              <p className="text-white/50 text-xs leading-relaxed">
+                Generate an AI ad concept with viral hooks, or dispatch a verified creator crew on demand.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2.5 mt-2 w-full max-w-xs">
+              {onOpenCreate && (
+                <button
+                  type="button"
+                  onClick={onOpenCreate}
+                  className="flex-1 bg-sleek-violet hover:bg-purple-600 text-white py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-sleek-violet/25"
+                >
+                  <Sparkles size={14} /> Generate first concept
+                </button>
+              )}
+              {onDispatchCreator && (
+                <button
+                  type="button"
+                  onClick={onDispatchCreator}
+                  className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95"
+                >
+                  <Zap size={14} className="text-emerald-400" /> Dispatch a creator
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {projects.map((project, idx) => {
+              const completedCount = project.milestones.filter(m => m.completed).length;
+              const progressPct = project.milestones.length > 0 
+                ? Math.round((completedCount / project.milestones.length) * 100) 
+                : 0;
+              const currentStageObj = STAGES.find(s => s.id === project.stage) || STAGES[0];
 
-            return (
-              <motion.div
-                key={project.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.06 }}
-                onClick={() => setSelectedProject(project)}
-                className="bg-sleek-dark border border-white/10 hover:border-sleek-violet/50 rounded-3xl p-5 cursor-pointer transition-all shadow-xl group hover:scale-[1.01]"
-              >
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-white/40">
-                        {project.brandName}
-                      </span>
-                      <span className="text-white/20 text-xs">•</span>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-sleek-violet">
-                        ₹{project.budget.toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                    <h3 className="text-base font-bold text-white group-hover:text-sleek-violet transition-colors">
-                      {project.title}
-                    </h3>
-                  </div>
-
-                  <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-white ${currentStageObj.color}`}>
-                    {currentStageObj.label}
-                  </span>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-1.5 my-3">
-                  <div className="flex justify-between text-[10px] font-bold text-white/50">
-                    <span>Milestones Completed</span>
-                    <span>{completedCount} / {project.milestones.length} ({progressPct}%)</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-sleek-violet to-sleek-fuchsia rounded-full transition-all duration-500"
-                      style={{ width: `${progressPct}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Footer Metadata */}
-                <div className="flex items-center justify-between pt-3 border-t border-white/5 mt-3 text-xs text-white/60">
-                  <div className="flex items-center gap-2">
-                    {project.assignedCreator?.avatar ? (
-                      <img 
-                        src={project.assignedCreator.avatar} 
-                        alt={project.assignedCreator.name} 
-                        className="w-5 h-5 rounded-full object-cover border border-white/10" 
-                      />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px]">
-                        🎬
+              return (
+                <motion.div
+                  key={project.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.06 }}
+                  onClick={() => setSelectedProject(project)}
+                  className="bg-sleek-dark border border-white/10 hover:border-sleek-violet/50 rounded-3xl p-5 cursor-pointer transition-all shadow-xl group hover:scale-[1.01]"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-white/40">
+                          {project.brandName}
+                        </span>
+                        <span className="text-white/20 text-xs">•</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-sleek-violet">
+                          ₹{project.budget.toLocaleString('en-IN')}
+                        </span>
                       </div>
-                    )}
-                    <span className="text-[11px] font-medium text-white/80">
-                      {project.assignedCreator?.name || 'Assigning Crew...'}
+                      <h3 className="text-base font-bold text-white group-hover:text-sleek-violet transition-colors">
+                        {project.title}
+                      </h3>
+                    </div>
+
+                    <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-white ${currentStageObj.color}`}>
+                      {currentStageObj.label}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-sleek-violet font-bold text-xs">
-                    Manage Project <ChevronRight size={14} />
+                  {/* Progress Bar */}
+                  <div className="space-y-1.5 my-3">
+                    <div className="flex justify-between text-[10px] font-bold text-white/50">
+                      <span>Milestones Completed</span>
+                      <span>{completedCount} / {project.milestones.length} ({progressPct}%)</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-sleek-violet to-sleek-fuchsia rounded-full transition-all duration-500"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+
+                  {/* Footer Metadata */}
+                  <div className="flex items-center justify-between pt-3 border-t border-white/5 mt-3 text-xs text-white/60">
+                    <div className="flex items-center gap-2">
+                      {project.assignedCreator?.avatar ? (
+                        <img 
+                          src={project.assignedCreator.avatar} 
+                          alt={project.assignedCreator.name} 
+                          className="w-5 h-5 rounded-full object-cover border border-white/10" 
+                        />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px]">
+                          🎬
+                        </div>
+                      )}
+                      <span className="text-[11px] font-medium text-white/80">
+                        {project.assignedCreator?.name || 'Assigning Crew...'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-sleek-violet font-bold text-xs">
+                      Manage Project <ChevronRight size={14} />
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )
       )}
 
       {/* Creatives Tab View */}
       {activeTab === 'creatives' && (
         <div>
           {creatives.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-              <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center border border-white/5">
-                <Sparkles className="text-zinc-600" size={28} />
+            <div className="flex flex-col items-center justify-center gap-4 py-16 px-4 text-center bg-sleek-dark/30 rounded-3xl border border-white/5">
+              <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center border border-white/5 shadow-xl">
+                <Sparkles className="text-sleek-violet" size={28} />
               </div>
-              <div className="max-w-[240px]">
-                <h3 className="text-base font-bold text-white mb-1">No AI concepts yet</h3>
-                <p className="text-zinc-500 text-xs">Generate ad concepts with scripts in the Create tab.</p>
+              <div className="max-w-[260px]">
+                <h3 className="text-base font-bold text-white mb-1">Your production pipeline is empty</h3>
+                <p className="text-zinc-500 text-xs">Generate ad concepts with scripts in Create, or dispatch an on-demand creator crew.</p>
               </div>
-              {onOpenCreate && (
-                <button
-                  onClick={onOpenCreate}
-                  className="px-4 py-2 bg-sleek-violet text-white rounded-xl text-xs font-bold uppercase tracking-wider mt-2"
-                >
-                  Go to Create
-                </button>
-              )}
+              <div className="flex flex-col sm:flex-row gap-2.5 mt-2 w-full max-w-xs">
+                {onOpenCreate && (
+                  <button
+                    type="button"
+                    onClick={onOpenCreate}
+                    className="flex-1 px-4 py-3 bg-sleek-violet text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-sleek-violet/25"
+                  >
+                    <Sparkles size={14} /> Generate first concept
+                  </button>
+                )}
+                {onDispatchCreator && (
+                  <button
+                    type="button"
+                    onClick={onDispatchCreator}
+                    className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2"
+                  >
+                    <Zap size={14} className="text-emerald-400" /> Dispatch a creator
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">

@@ -26,7 +26,9 @@ service cloud.firestore {
         && data.userId == request.auth.uid
         && data.name is string && data.name.size() > 0 && data.name.size() <= 100
         && (!('industry' in data) || (data.industry is string && data.industry.size() <= 100))
+        && (!('targetAudience' in data) || (data.targetAudience is string && data.targetAudience.size() <= 200))
         && (!('tone' in data) || (data.tone is string && data.tone.size() <= 100))
+        && (!('primaryColor' in data) || (data.primaryColor is string && data.primaryColor.size() <= 50))
         && (!('fontVibe' in data) || data.fontVibe in ['modern', 'serif', 'brutalist', 'minimal'])
         && (!('likedStudioIds' in data) || data.likedStudioIds is list);
     }

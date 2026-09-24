@@ -26,12 +26,53 @@ import { INITIAL_PARTNER_PROFILES } from '../../constants/stakeholderData';
 import PartnerWorkSection from './PartnerWorkSection';
 import PartnerEarningsSection from './PartnerEarningsSection';
 import TrainingReelsSection from './TrainingReelsSection';
+import PartnerNotificationCenter from './PartnerNotificationCenter';
+import { PartnerNotification } from '../../types/notifications';
 
 type PartnerTab = 'work' | 'earnings' | 'reels' | 'profile';
 
 interface PartnerPortalProps {
   onSwitchToClientMode?: () => void;
 }
+
+const INITIAL_PARTNER_NOTIFICATIONS: PartnerNotification[] = [
+  {
+    id: 'notif_1',
+    type: 'new_order',
+    title: '🚨 New Reel Shoot Order Nearby',
+    message: 'Cult Fitness requested an instant iPhone 16 Pro reel shoot at Indiranagar 100ft Rd (1.8 km away).',
+    amount: 5500,
+    timestamp: '2m ago',
+    read: false,
+    priority: 'high',
+    location: 'Indiranagar 100ft Rd',
+    clientName: 'Cult Fitness',
+    actionPayload: {
+      orderId: 'ord_cult_101',
+      gigTitle: 'Cult Fitness 3x Reels',
+      amount: 5500
+    }
+  },
+  {
+    id: 'notif_2',
+    type: 'payout_processed',
+    title: '💰 Daily Shoot Payout Credited',
+    message: '₹4,500 transferred to upi@okhdfcbank via instant IMPS payout gateway. Transaction Ref: IMPS-982144',
+    amount: 4500,
+    timestamp: '1h ago',
+    read: false,
+    priority: 'high'
+  },
+  {
+    id: 'notif_3',
+    type: 'status_changed',
+    title: '🎬 S-Log3 4K Footage Ingested',
+    message: 'Videographer uploaded raw Sony FX3 footage cards for "Cafe Espresso Commercial". DaVinci Resolve color grading queue is now active.',
+    timestamp: '3h ago',
+    read: true,
+    priority: 'normal'
+  }
+];
 
 const ROLE_OPTIONS: { id: StakeholderRole; title: string; icon: any; color: string }[] = [
   { id: 'reel_creator', title: 'Video Reel Creator', icon: Smartphone, color: 'text-sleek-violet' },
@@ -59,6 +100,9 @@ export default function PartnerPortal({ onSwitchToClientMode }: PartnerPortalPro
   // Active Tab: work | earnings | reels | profile
   const [activeTab, setActiveTab] = useState<PartnerTab>('work');
 
+  // Real-time notifications state for gig alerts, payouts, and project statuses
+  const [notifications, setNotifications] = useState<PartnerNotification[]>(INITIAL_PARTNER_NOTIFICATIONS);
+
   // Dynamic profile data based on selected role
   const [profiles, setProfiles] = useState<Record<StakeholderRole, PartnerProfile>>(INITIAL_PARTNER_PROFILES);
   const activeProfile = profiles[currentRole];
@@ -74,6 +118,14 @@ export default function PartnerPortal({ onSwitchToClientMode }: PartnerPortalPro
         completedJobs: prev[currentRole].completedJobs + 1
       }
     }));
+  };
+
+  // Helper to accept an incoming gig from notification
+  const handleAcceptOrderNotification = (notif: PartnerNotification) => {
+    if (notif.amount) {
+      handleCreditWallet(notif.amount, `Accepted gig: ${notif.title}`);
+    }
+    setActiveTab('work');
   };
 
   // Helper for withdrawals
@@ -168,7 +220,7 @@ export default function PartnerPortal({ onSwitchToClientMode }: PartnerPortalPro
             </AnimatePresence>
           </div>
 
-          {/* Quick Header Actions: Online Toggle & Switch to Client Mode */}
+          {/* Quick Header Actions: Online Toggle, Real-time Notification Center, Switch to Client Mode */}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -182,6 +234,15 @@ export default function PartnerPortal({ onSwitchToClientMode }: PartnerPortalPro
               <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-ping' : 'bg-zinc-500'}`} />
               <span>{isOnline ? 'Online' : 'Offline'}</span>
             </button>
+
+            {/* Real-Time Notification Center */}
+            <PartnerNotificationCenter
+              notifications={notifications}
+              onNotificationsChange={setNotifications}
+              onAcceptOrder={handleAcceptOrderNotification}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              currentRoleTitle={currentRoleObj.title}
+            />
 
             {onSwitchToClientMode && (
               <button

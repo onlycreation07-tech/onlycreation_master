@@ -29,6 +29,7 @@ function AppContent() {
   const [creatives, setCreatives] = useState<AdCreative[]>([]);
   const [activeCreative, setActiveCreative] = useState<AdCreative | null>(null);
   const [studioCategory, setStudioCategory] = useState<'all' | 'photography' | 'video' | 'music' | 'podcast' | 'billboard' | 'liked'>('all');
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [brandProfile, setBrandProfile] = useState<BrandProfile>({
     name: 'Your Brand',
     industry: 'Lifestyle',
@@ -56,6 +57,55 @@ function AppContent() {
   const handleProduceAd = (creative: AdCreative) => {
     setActiveCreative(creative);
     setCurrentView('studios');
+  };
+
+  const handleConvertToProject = async (creative: AdCreative) => {
+    try {
+      const title = creative.prompt 
+        ? creative.prompt.slice(0, 42).trim() + (creative.prompt.length > 42 ? '...' : '') 
+        : 'AI Commercial Concept';
+
+      const newProjectId = await dbService.createProject({
+        userId: user?.uid || 'guest_user',
+        title,
+        brandName: brandProfile.name || 'Brand Studio',
+        stage: 'ideation',
+        budget: 25000,
+        creativePrompt: creative.videoScript 
+          ? `${creative.prompt}\n\n[VIRAL SCRIPT]:\n${creative.videoScript}` 
+          : creative.prompt,
+        assignedCreator: {
+          name: 'Assigning Creator...',
+          role: 'Lead Cinematographer & Editor',
+          handle: '@onlycreation.ops'
+        },
+        milestones: [
+          { id: `m_${Date.now()}_1`, title: 'Concept & Script Breakdown Approved', completed: true },
+          { id: `m_${Date.now()}_2`, title: 'Production Crew & Studio Booking', completed: false, dueDate: 'In 2 days' },
+          { id: `m_${Date.now()}_3`, title: 'Principal Photography & 4K Capture', completed: false, dueDate: 'In 4 days' },
+          { id: `m_${Date.now()}_4`, title: 'DaVinci Color & Sound Master Pass', completed: false, dueDate: 'In 6 days' },
+          { id: `m_${Date.now()}_5`, title: 'Final Client Sign-off & 4K Delivery', completed: false, dueDate: 'In 7 days' }
+        ],
+        deliverables: (creative.imageUrls && creative.imageUrls.length > 0) ? [
+          {
+            id: `del_${Date.now()}`,
+            name: 'Concept_Visual_Storyframe.jpg',
+            url: creative.imageUrls[0],
+            type: 'image',
+            uploadedAt: 'Today',
+            size: '3.4 MB'
+          }
+        ] : [],
+        aiHealthScore: 98,
+        aiRiskAnalysis: 'Fresh concept generated via OnlyCreation AI engine. On track for production.'
+      });
+
+      setSelectedProjectId(newProjectId);
+      setCurrentView('projects');
+    } catch (e) {
+      console.warn("Could not save project to Firestore:", e);
+      setCurrentView('projects');
+    }
   };
 
   if (loading) {
@@ -124,7 +174,7 @@ function AppContent() {
             onGenerated={handleCreativeGenerated} 
             onProduce={handleProduceAd} 
             onLaunchDispatch={() => setCurrentView('dispatch')}
-            onConvertToProject={() => setCurrentView('projects')}
+            onConvertToProject={handleConvertToProject}
             brandProfile={brandProfile}
           />
         );
@@ -135,10 +185,19 @@ function AppContent() {
             brandProfile={brandProfile} 
             onToggleLike={handleToggleLike}
             initialCategory={studioCategory}
+            onExploreCreate={() => setCurrentView('create')}
+            onViewProjects={() => setCurrentView('projects')}
           />
         );
       case 'projects':
-        return <ProjectsScreen creatives={creatives} onOpenCreate={() => setCurrentView('create')} />;
+        return (
+          <ProjectsScreen 
+            creatives={creatives} 
+            onOpenCreate={() => setCurrentView('create')}
+            onDispatchCreator={() => setCurrentView('dispatch')}
+            initialProjectId={selectedProjectId}
+          />
+        );
       case 'profile':
         return (
           <ProfileScreen 
@@ -148,6 +207,7 @@ function AppContent() {
               setStudioCategory('liked');
               setCurrentView('studios');
             }}
+            onNavigateToProjects={() => setCurrentView('projects')}
             onNavigateToPartner={() => setCurrentView('partner')}
           />
         );

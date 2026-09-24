@@ -26,6 +26,7 @@ import { INSPIRATION_ITEMS, MOCK_STUDIOS } from '../../constants/mockData';
 import NostalgicShortsFeed from './NostalgicShortsFeed';
 import PaymentGatewayModal from '../payment/PaymentGatewayModal';
 import { PaymentOrder } from '../../services/paymentService';
+import OnboardingModal from './OnboardingModal';
 
 interface HomeScreenProps {
   onUseTemplate: (prompt: string) => void;
@@ -50,6 +51,15 @@ export default function HomeScreen({
   const [loadingStudios, setLoadingStudios] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [paymentOrder, setPaymentOrder] = useState<PaymentOrder | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check onboarding on mount
+  useEffect(() => {
+    const completed = localStorage.getItem('onlycreation_onboarding_completed');
+    if (!completed) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   // Quick studio listing form state
   const [newStudioName, setNewStudioName] = useState('');
@@ -529,6 +539,15 @@ export default function HomeScreen({
           }}
         />
       )}
+
+      {/* Lightweight First-Time Onboarding Modal */}
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onNavigateToCreate={() => onUseTemplate('')}
+        onNavigateToDispatch={onLaunchDispatch}
+        onNavigateToStudios={onNavigateToStudios}
+      />
     </div>
   );
 }
